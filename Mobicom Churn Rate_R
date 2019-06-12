@@ -1,0 +1,1217 @@
+getwd()
+telecom1<-read.csv("telecomfinal.csv",stringsAsFactors =T)
+options(scipen=999)
+library(dplyr)
+summary(telecom$retdays)
+
+names(telecom1)
+str(telecom1)
+summary(telecom1)
+
+#Creating Data Quality Report
+
+#Variable names
+variable<-names(telecom1)
+dqr<-as.data.frame(variable)
+rm(variable)
+
+#Class for each variable
+dqr$Datatype<-sapply(telecom1,class)
+
+#No. of record for each variable
+dqr$No.ofRecord<-nrow(telecom1)
+
+#Unique Values
+for(i in 1:ncol(telecom1))
+{
+  dqr$Unique[i]<-length(unique(telecom1[,i]))
+}
+
+#No. of Observations
+dqr$DataAvailable<-colSums(!is.na(telecom1))
+dqr$AvailablePerc<-round(colMeans(!is.na(telecom1)),4)
+
+#No. and Percentage of Misssing Values
+dqr$Miss<-colSums(is.na(telecom1))
+dqr$MissPerc<-round(colMeans(!is.na(telecom1)),4)
+
+#Mininum and Maximum and Quantile 
+for(i in 1:ncol(telecom1))
+{
+  dqr$Minimum[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",min(telecom1[,i],na.rm=T),0),2)
+  dqr$Maximum[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",max(telecom1[,i],na.rm=T),0),2)
+  dqr$Mean[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",mean(telecom1[,i],na.rm=T),0),2) 
+}  
+
+#Quantile Function
+for(i in 1:ncol(telecom))
+{
+  dqr$X5th.Percentile[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",quantile(telecom1[,i],p=0.05,na.rm=T),0),2)
+  dqr$X10th.Percentile[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",quantile(telecom1[,i],p=0.10,na.rm=T),0),2)
+  dqr$X25th.Percentile[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",quantile(telecom1[,i],p=0.25,na.rm=T),0),2)
+  dqr$X50th.Percentile[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",quantile(telecom1[,i],p=0.50,na.rm=T),0),2)
+  dqr$X75th.Percentile[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",quantile(telecom1[,i],p=0.75,na.rm=T),0),2)
+  dqr$X90th.Percentile[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",quantile(telecom1[,i],p=0.95,na.rm=T),0),2)
+  dqr$X95th.Percentile[i]<-round(ifelse(class(telecom1[,i])=="integer"|class(telecom1[,i])=="numeric",quantile(telecom1[,i],p=0.95,na.rm=T),0),2)
+}
+
+str(dqr)
+
+#Exporting data Quality Report
+write.csv(dqr,"Data Quality Report",row.names=T)
+
+
+#Missing value treatment of var,"retdays" and create a Dummy Variable
+summary(telecom1$retdays)
+sort(unique(telecom1$retdays),na.last=F)
+telecom1$retdays_1<-ifelse(is.na(telecom1$retdays)==TRUE,0,1)
+str(telecom1$retdays_1)
+summary(telecom1$retdays_1)
+
+#Omitting Variables which is having more than 15% missing values and create a new dataset
+tele1<-telecom1[,colMeans(is.na(telecom1))<=0.15]
+
+#Variable drop_blk_mean is creatd by blck_dat_Mean+BLCK_VCE_MEAN+DROP_DAT_MEAN+DROP_VCE_MEAN
+names(tele1)
+tele1<-tele1[,-50]
+
+#Data Exploration 
+
+#Binning for Continuous Variable 
+#1)"mou_Mean"
+summary(tele1$mou_Mean)
+dat1<-tele1%>%mutate(dec=ntile(mou_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat1$N<-unclass(tele1%>%mutate(dec=ntile(mou_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat1$churn_perc<-round(dat1$n/dat1$N,2)
+dat1$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(mou_Mean,n=10))%>%group_by(dec)%>%summarise(min(mou_Mean)))[[2]]
+dat1$Lessthan<-unclass(tele1%>%mutate(dec=ntile(mou_Mean,n=10))%>%group_by(dec)%>%summarise(max(mou_Mean)))[[2]]
+dat1$varname<-rep("mou_Mean",nrow(dat1))
+
+#2)"totmrc_Mean"
+summary(tele1$mou_Mean)
+dat2<-tele1%>%mutate(dec=ntile(totmrc_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat2$N<-unclass(tele1%>%mutate(dec=ntile(totmrc_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat2$churn_perc<-round(dat2$n/dat2$N,2)
+dat2$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(totmrc_Mean,n=10))%>%group_by(dec)%>%summarise(min(totmrc_Mean)))[[2]]
+dat2$Lessthan<-unclass(tele1%>%mutate(dec=ntile(totmrc_Mean,n=10))%>%group_by(dec)%>%summarise(max(totmrc_Mean)))[[2]]
+dat2$varname<-rep("totmrc_Mean",nrow(dat2))
+
+#3)"rev_Range"
+summary(tele1$rev_Range)
+dat3<-tele1%>%mutate(dec=ntile(rev_Range,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat3$N<-unclass(tele1%>%mutate(dec=ntile(rev_Range,n=10))%>%count(dec)%>%unname())[[2]]
+dat3$churn_perc<-round(dat3$n/dat3$N,2)
+dat3$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(rev_Range,n=10))%>%group_by(dec)%>%summarise(min(rev_Range)))[[2]]
+dat3$Lessthan<-unclass(tele1%>%mutate(dec=ntile(rev_Range,n=10))%>%group_by(dec)%>%summarise(max(rev_Range)))[[2]]
+dat3$varname<-rep("rev_Range",nrow(dat3))
+
+#4)"mou_Range"
+summary(tele1$mou_Range)
+dat4<-tele1%>%mutate(dec=ntile(mou_Range,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat4$N<-unclass(tele1%>%mutate(dec=ntile(mou_Range,n=10))%>%count(dec)%>%unname())[[2]]
+dat4$churn_perc<-round(dat4$n/dat4$N,2)
+dat4$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(mou_Range,n=10))%>%group_by(dec)%>%summarise(min(mou_Range)))[[2]]
+dat4$Lessthan<-unclass(tele1%>%mutate(dec=ntile(mou_Range,n=10))%>%group_by(dec)%>%summarise(max(mou_Range)))[[2]]
+dat4$varname<-rep("mou_Range",nrow(dat4))
+
+#5)"change_mou"
+summary(tele1$change_mou)
+dat5<-tele1%>%mutate(dec=ntile(change_mou,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat5$N<-unclass(tele1%>%mutate(dec=ntile(change_mou,n=10))%>%count(dec)%>%unname())[[2]]
+dat5$churn_perc<-round(dat5$n/dat5$N,2)
+dat5$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(change_mou,n=10))%>%group_by(dec)%>%summarise(min(change_mou)))[[2]]
+dat5$Lessthan<-unclass(tele1%>%mutate(dec=ntile(change_mou,n=10))%>%group_by(dec)%>%summarise(max(change_mou)))[[2]]
+dat5$varname<-rep("change_mou",nrow(dat5))
+
+#6)"drop_blk_mean"
+summary(tele1$drop_blk_Mean)
+dat6<-tele1%>%mutate(dec=ntile(drop_blk_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat6$N<-unclass(tele1%>%mutate(dec=ntile(drop_blk_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat6$churn_perc<-round(dat6$n/dat6$N,2)
+dat6$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(drop_blk_Mean,n=10))%>%group_by(dec)%>%summarise(min(drop_blk_Mean)))[[2]]
+dat6$Lessthan<-unclass(tele1%>%mutate(dec=ntile(drop_blk_Mean,n=10))%>%group_by(dec)%>%summarise(max(drop_blk_Mean)))[[2]]
+dat6$varname<-rep("drop_blk_mean",nrow(dat6))
+
+#7)"drop_vce_Range"
+summary(tele1$drop_vce_Range)
+dat7<-tele1%>%mutate(dec=ntile(drop_vce_Range,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat7$N<-unclass(tele1%>%mutate(dec=ntile(drop_vce_Range,n=10))%>%count(dec)%>%unname())[[2]]
+dat7$churn_perc<-round(dat7$N/dat7$N,2)
+dat7$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(drop_vce_Range,n=10))%>%group_by(dec)%>%summarise(min(drop_vce_Range)))[[2]]
+dat7$Lessthan<-unclass(tele1%>%mutate(dec=ntile(drop_vce_Range,n=10))%>%group_by(dec)%>%summarise(max(drop_vce_Range)))[[2]]
+dat7$varname<-rep("drop_vce_Range",nrow(dat7))
+
+#8)"owylis_vce_Range"
+summary(tele1$owylis_vce_Range)
+dat8<-tele1%>%mutate(dec=ntile(owylis_vce_Range,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat8$N<-unclass(tele1%>%mutate(dec=ntile(owylis_vce_Range,n=10))%>%count(dec)%>%unname())[[2]]
+dat8$churn_perc<-round(dat8$n/dat8$N,2)
+dat8$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(owylis_vce_Range,n=10))%>%group_by(dec)%>%summarise(min(owylis_vce_Range)))[[2]]
+dat8$Lessthan<-unclass(tele1%>%mutate(dec=ntile(owylis_vce_Range,n=10))%>%group_by(dec)%>%summarise(max(owylis_vce_Range)))[[2]]
+dat8$varname<-rep("owylis_vce_Range",nrow(dat8))
+
+#9)"???mou_opkv_Range"
+summary(tele1$mou_opkv_Range)
+dat9<-tele1%>%mutate(dec=ntile(mou_opkv_Range,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat9$N<-unclass(tele1%>%mutate(dec=ntile(mou_opkv_Range,n=10))%>%count(dec)%>%unname())[[2]]
+dat9$churn_perc<-round(dat9$n/dat9$N,2)
+dat9$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(mou_opkv_Range,n=10))%>%group_by(dec)%>%summarise(min(mou_opkv_Range)))[[2]]
+dat9$Lessthan<-unclass(tele1%>%mutate(dec=ntile(mou_opkv_Range,n=10))%>%group_by(dec)%>%summarise(max(mou_opkv_Range)))[[2]]
+dat9$varname<-rep("mou_opkv_Range",nrow(dat9))
+
+#10)"months"
+summary(tele1$months)
+dat10<-tele1%>%mutate(dec=ntile(months,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat10$N<-unclass(tele1%>%mutate(dec=ntile(months,n=10))%>%count(dec)%>%unname())[[2]]
+dat10$churn_perc<-round(dat10$n/dat10$N,2)
+dat10$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(months,n=10))%>%group_by(dec)%>%summarise(min(months)))[[2]]
+dat10$Lessthan<-unclass(tele1%>%mutate(dec=ntile(months,n=10))%>%group_by(dec)%>%summarise(max(months)))[[2]]
+dat10$varname<-rep("months",nrow(dat10))
+
+#11)"totcalls"
+summary(tele1$totcalls)
+dat11<-tele1%>%mutate(dec=ntile(totcalls,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat11$N<-unclass(tele1%>%mutate(dec=ntile(totcalls,n=10))%>%count(dec)%>%unname())[[2]]
+dat11$churn_perc<-round(dat11$n/dat11$N,2)
+dat11$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(totcalls,n=10))%>%group_by(dec)%>%summarise(min(totcalls)))[[2]]
+dat11$Lessthan<-unclass(tele1%>%mutate(dec=ntile(totcalls,n=10))%>%group_by(dec)%>%summarise(max(totcalls)))[[2]]
+dat11$varname<-rep("totcalls",nrow(dat11))
+
+#12)"eqpdays"
+summary(tele1$eqpdays)
+index<-which(is.na(tele1$eqpdays))
+tele1<-tele1[-index,]
+dat12<-tele1%>%mutate(dec=ntile(eqpdays,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat12$N<-unclass(tele1%>%mutate(dec=ntile(eqpdays,n=10))%>%count(dec)%>%unname())[[2]]
+dat12$churn_perc<-round(dat12$n/dat12$N,2)
+dat12$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(totcalls,n=10))%>%group_by(dec)%>%summarise(min(eqpdays)))[[2]]
+dat12$Lessthan<-unclass(tele1%>%mutate(dec=ntile(eqpdays,n=10))%>%group_by(dec)%>%summarise(max(eqpdays)))[[2]]
+dat12$varname<-rep("eqpdays",nrow(dat12))
+
+#13)"custcare_Mean"
+summary(tele1$custcare_Mean)
+dat13<-tele1%>%mutate(dec=ntile(custcare_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat13$varname<-rep("custcare_Mean",nrow(dat12))
+
+plot(tele1$churn,tele1$custcare_Mean,col="red")
+#Getting less than 4 deciles so we can omit this
+
+#14)"callwait_Mean"
+summary(tele1$callwait_Mean)
+dat14<-tele1%>%mutate(dec=ntile(callwait_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat14$N<-unclass(tele1%>%mutate(dec=ntile(callwait_Mean,n=4))%>%count(dec)%>%unname())[[2]]
+dat14$churn_perc<-round(dat14$n/dat14$N,2)
+dat14$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(callwait_Mean,n=4))%>%group_by(dec)%>%summarise(min(callwait_Mean)))[[2]]
+dat14$Lessthan<-unclass(tele1%>%mutate(dec=ntile(callwait_Mean,n=4))%>%group_by(dec)%>%summarise(max(callwait_Mean)))[[2]]
+dat14$varname<-rep("callwait_Mean",nrow(dat14))
+
+#15)"iwylis_vce_Mean"
+summary(tele1$iwylis_vce_Mean)
+dat15<-tele1%>%mutate(dec=ntile(iwylis_vce_Mean,n=6))%>%count(churn,dec)%>%filter(churn==1)
+dat15$N<-unclass(tele1%>%mutate(dec=ntile(iwylis_vce_Mean,n=6))%>%count(dec)%>%unname())[[2]]
+dat15$churn_perc<-round(dat15$n/dat15$N,2)
+dat15$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(iwylis_vce_Mean,n=6))%>%group_by(dec)%>%summarise(min(iwylis_vce_Mean)))[[2]]
+dat15$Lessthan<-unclass(tele1%>%mutate(dec=ntile(iwylis_vce_Mean,n=6))%>%group_by(dec)%>%summarise(max(iwylis_vce_Mean)))[[2]]
+dat15$varname<-rep("iwylis_vce_Mean",nrow(dat15))
+
+#16)"callwait_Range"
+summary(tele1$callwait_Range)
+dat16<-tele1%>%mutate(dec=ntile(callwait_Range,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat16$varname<-rep("callwait_Range",nrow(dat16))
+#Getting less than  deciles so we can omit this
+
+#17)"ccrndmou_Range"
+summary(tele1$ccrndmou_Range)
+dat17<-tele1%>%mutate(dec=ntile(ccrndmou_Range,n=4))%>%count(churn,dec)%>%filter(churn==1)
+#Getting less than 4 deciles so we can omit this
+
+#18)"adjqty"
+summary(tele1$adjqty)
+dat18<-tele1%>%mutate(dec=ntile(adjqty,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat18$N<-unclass(tele1%>%mutate(dec=ntile(adjqty,n=10))%>%count(dec)%>%unname())[[2]]
+dat18$churn_perc<-round(dat18$n/dat18$N,2)
+dat18$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(adjqty,n=10))%>%group_by(dec)%>%summarise(min(adjqty)))[[2]]
+dat18$Lessthan<-unclass(tele1%>%mutate(dec=ntile(adjqty,n=10))%>%group_by(dec)%>%summarise(max(adjqty)))[[2]]
+dat18$varname<-rep("adjqty",nrow(dat18))
+
+#19)"ovrrev_Mean"
+summary(tele1$ovrrev_Mean)
+dat19<-tele1%>%mutate(dec=ntile(ovrrev_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat19$N<-unclass(tele1%>%mutate(dec=ntile(ovrrev_Mean,n=4))%>%count(dec)%>%unname())[[2]]
+dat19$churn_perc<-round(dat19$n/dat19$N,2)
+dat19$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(ovrrev_Mean,n=4))%>%group_by(dec)%>%summarise(min(ovrrev_Mean)))[[2]]
+dat19$Lessthan<-unclass(tele1%>%mutate(dec=ntile(ovrrev_Mean,n=4))%>%group_by(dec)%>%summarise(max(ovrrev_Mean)))[[2]]
+dat19$varname<-rep("ovrrev_Mean",nrow(dat19))
+
+#20)"rev_Mean"
+summary(tele1$rev_Mean)
+dat20<-tele1%>%mutate(dec=ntile(rev_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat20$N<-unclass(tele1%>%mutate(dec=ntile(rev_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat20$churn_perc<-round(dat20$n/dat20$N,2)
+dat20$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(rev_Mean,n=10))%>%group_by(dec)%>%summarise(min(rev_Mean)))[[2]]
+dat20$Lessthan<-unclass(tele1%>%mutate(dec=ntile(rev_Mean,n=10))%>%group_by(dec)%>%summarise(max(rev_Mean)))[[2]]
+dat20$varname<-rep("rev_Mean",nrow(dat20))
+
+#21)"ovrmou_Mean"
+summary(tele1$ovrmou_Mean)
+dat21<-tele1%>%mutate(dec=ntile(ovrmou_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat21$N<-unclass(tele1%>%mutate(dec=ntile(ovrmou_Mean,n=4))%>%count(dec)%>%unname())[[2]]
+dat21$churn_perc<-round(dat21$n/dat21$N,2)
+dat21$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(ovrmou_Mean,n=4))%>%group_by(dec)%>%summarise(min(ovrmou_Mean)))[[2]]
+dat21$Lessthan<-unclass(tele1%>%mutate(dec=ntile(ovrmou_Mean,n=4))%>%group_by(dec)%>%summarise(max(ovrmou_Mean)))[[2]]
+dat21$varname<-rep("ovrmou_Mean",nrow(dat21))
+
+#22)"comp_vce_Mean"
+summary(tele1$comp_vce_Mean)
+dat22<-tele1%>%mutate(dec=ntile(comp_vce_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat22$N<-unclass(tele1%>%mutate(dec=ntile(comp_vce_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat22$churn_perc<-round(dat22$n/dat22$N,2)
+dat22$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(comp_vce_Mean,n=10))%>%group_by(dec)%>%summarise(min(comp_vce_Mean)))[[2]]
+dat22$Lessthan<-unclass(tele1%>%mutate(dec=ntile(comp_vce_Mean,n=10))%>%group_by(dec)%>%summarise(max(comp_vce_Mean)))[[2]]
+dat22$varname<-rep("comp_vce_Mean",nrow(dat22))
+
+#23)"plcd_vce_Mean"
+summary(tele1$plcd_vce_Mean)
+dat23<-tele1%>%mutate(dec=ntile(plcd_vce_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat23$N<-unclass(tele1%>%mutate(dec=ntile(plcd_vce_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat23$churn_perc<-round(dat23$n/dat23$N,2)
+dat23$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(plcd_vce_Mean,n=10))%>%group_by(dec)%>%summarise(min(plcd_vce_Mean)))[[2]]
+dat23$Lessthan<-unclass(tele1%>%mutate(dec=ntile(plcd_vce_Mean,n=10))%>%group_by(dec)%>%summarise(max(plcd_vce_Mean)))[[2]]
+dat23$varname<-rep("plcd_vce_Mean",nrow(dat23))
+
+#24)"avg3mou"
+summary(tele1$avg3mou)
+dat24<-tele1%>%mutate(dec=ntile(avg3mou,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat24$N<-unclass(tele1%>%mutate(dec=ntile(avg3mou,n=10))%>%count(dec)%>%unname())[[2]]
+dat24$churn_perc<-round(dat24$n/dat24$N,2)
+dat24$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(avg3mou,n=10))%>%group_by(dec)%>%summarise(min(avg3mou)))[[2]]
+dat24$Lessthan<-unclass(tele1%>%mutate(dec=ntile(avg3mou,n=10))%>%group_by(dec)%>%summarise(max(avg3mou)))[[2]]
+dat24$varname<-rep("avg3mou",nrow(dat24))
+
+#25)"avgmou"
+summary(tele1$avgmou)
+dat25<-tele1%>%mutate(dec=ntile(avgmou,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat25$N<-unclass(tele1%>%mutate(dec=ntile(avgmou,n=10))%>%count(dec)%>%unname())[[2]]
+dat25$churn_perc<-round(dat25$n/dat25$N,2)
+dat25$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(avgmou,n=10))%>%group_by(dec)%>%summarise(min(avgmou)))[[2]]
+dat25$Lessthan<-unclass(tele1%>%mutate(dec=ntile(avgmou,n=10))%>%group_by(dec)%>%summarise(max(avgmou)))[[2]]
+dat25$varname<-rep("avgmou",nrow(dat25))
+
+#26)"avg3qty"
+summary(tele1$avg3qty)
+dat26<-tele1%>%mutate(dec=ntile(avg3qty,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat26$N<-unclass(tele1%>%mutate(dec=ntile(avg3qty,n=10))%>%count(dec)%>%unname())[[2]]
+dat26$churn_perc<-round(dat26$n/dat26$N,2)
+dat26$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(avg3qty,n=10))%>%group_by(dec)%>%summarise(min(avg3qty)))[[2]]
+dat26$Lessthan<-unclass(tele1%>%mutate(dec=ntile(avg3qty,n=10))%>%group_by(dec)%>%summarise(max(avg3qty)))[[2]]
+dat26$varname<-rep("avg3qty",nrow(dat26))
+
+#27)"avgqty"
+summary(tele1$avgqty)
+dat27<-tele1%>%mutate(dec=ntile(avgqty,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat27$N<-unclass(tele1%>%mutate(dec=ntile(avgqty,n=10))%>%count(dec)%>%unname())[[2]]
+dat27$churn_perc<-round(dat27$n/dat27$N,2)
+dat27$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(avgqty,n=10))%>%group_by(dec)%>%summarise(min(avgqty)))[[2]]
+dat27$Lessthan<-unclass(tele1%>%mutate(dec=ntile(avgqty,n=10))%>%group_by(dec)%>%summarise(max(avgqty)))[[2]]
+dat27$varname<-rep("avgqty",nrow(dat27))
+
+#28)"avg6mou"
+summary(tele1$avg6mou)
+dat28<-tele1%>%mutate(dec=ntile(avg6mou,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat28$N<-unclass(tele1%>%mutate(dec=ntile(avg6mou,n=10))%>%count(dec)%>%unname())[[2]]
+dat28$churn_perc<-round(dat28$n/dat28$N,2)
+dat28$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(avg6mou,n=10))%>%group_by(dec)%>%summarise(min(avg6mou)))[[2]]
+dat28$Lessthan<-unclass(tele1%>%mutate(dec=ntile(avg6mou,n=10))%>%group_by(dec)%>%summarise(max(avg6mou)))[[2]]
+dat28$varname<-rep("avg6mou",nrow(dat28))
+
+#29)"avg6qty"
+summary(tele1$avg6qty)
+dat29<-tele1%>%mutate(dec=ntile(avg6qty,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat29$N<-unclass(tele1%>%mutate(dec=ntile(avg6qty,n=10))%>%count(dec)%>%unname())[[2]]
+dat29$churn_perc<-round(dat29$n/dat29$N,2)
+dat29$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(avg6qty,n=10))%>%group_by(dec)%>%summarise(min(avg6qty)))[[2]]
+dat29$Lessthan<-unclass(tele1%>%mutate(dec=ntile(avg6qty,n=10))%>%group_by(dec)%>%summarise(max(avg6qty)))[[2]]
+dat29$varname<-rep("avg6qty",nrow(dat29))
+
+#30)"age1"#Use as factor Variable
+summary(tele1$age1)
+dat30<-tele1%>%mutate(dec=ntile(age1,n=6))%>%count(churn,dec)%>%filter(churn==1)
+dat30$N<-unclass(tele1%>%mutate(dec=ntile(age1,n=6))%>%count(dec)%>%unname())[[2]]
+dat30$churn_perc<-round(dat30$n/dat30$N,2)
+dat30$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(age1,n=6))%>%group_by(dec)%>%summarise(min(age1)))[[2]]
+dat30$Lessthan<-unclass(tele1%>%mutate(dec=ntile(age1,n=6))%>%group_by(dec)%>%summarise(max(age1)))[[2]]
+dat30$varname<-rep("age1",nrow(dat30))
+
+#31)"age2"#Use as factor Variable"
+summary(tele1$age2)
+dat31<-tele1%>%mutate(dec=ntile(age2,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat31$varname<-rep("age2",nrow(dat31))
+
+#32)"models"#Use as a Fctor Variable"
+summary(tele1$models)
+dat32<-tele1%>%mutate(dec=ntile(models,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat32$varname<-rep("models",nrow(dat32))
+
+#33)"hnd_price"#use as Factor Variable
+summary(tele1$hnd_price)
+dat33<-tele1%>%mutate(dec=ntile(hnd_price,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat33$N<-unclass(tele1%>%mutate(dec=ntile(hnd_price,n=10))%>%count(dec)%>%unname())[[2]]
+dat33$churn_perc<-round(dat33$n/dat33$N,2)
+dat33$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(hnd_price,n=10))%>%group_by(dec)%>%summarise(min(hnd_price)))[[2]]
+dat33$Lessthan<-unclass(tele1%>%mutate(dec=ntile(hnd_price,n=10))%>%group_by(dec)%>%summarise(max(hnd_price)))[[2]]
+dat33$varname<-rep("hnd_price",nrow(dat33))
+
+#34)"actvsubs"#Factor Variable"
+summary(tele1$actvsubs)
+dat34<-tele1%>%mutate(dec=ntile(actvsubs,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat34$varname<-rep("actvsubs",nrow(dat34))
+
+#35)"uniqsubs""Factor Variable"
+summary(tele1$uniqsubs)
+dat35<-tele1%>%mutate(dec=ntile(uniqsubs,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat35$varname<-rep("uniqsubs",nrow(dat34))
+
+#36)"forgntvl""Factor Variable"
+summary(tele1$forgntvl)
+dat36<-tele1%>%mutate(dec=ntile(forgntvl,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat36$varname<-rep("forgntvl",nrow(dat36))
+
+#37)"opk_dat_Mean"#Omit"
+summary(tele1$opk_dat_Mean)
+dat37<-tele1%>%mutate(dec=ntile(opk_dat_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat37$varname<-rep("opk_dat_Mean",nrow(dat37))
+
+#38)"mtrcycle"Fcator Variable
+summary(tele1$mtrcycle)
+dat38<-tele1%>%mutate(dec=ntile(mtrcycle,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat38$varname<-rep("mtrcycle",nrow(dat38))
+
+#39)"truck"Factor Variable
+summary(tele1$truck)
+dat39<-tele1%>%mutate(dec=ntile(truck,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat39$varname<-rep("truck",nrow(dat39))
+
+#40)"roam_Mean"#Getting less than 4 deciles so omit.
+summary(tele1$roam_Mean)
+dat40<-tele1%>%mutate(dec=ntile(roam_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat40$varname<-rep("roam_Mean",nrow(dat40))
+
+#41)"recv_sms_Mean"#Getting less than 4 deciles so omit"
+summary(tele1$recv_sms_Mean)
+dat41<-tele1%>%mutate(dec=ntile(recv_sms_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat41$varname<-rep("recv_sms_Mean",nrow(dat41))
+
+#42)"mou_paed_Mean"#Getting less than 4 deciles so omit"
+summary(tele1$mou_pead_Mean)
+dat42<-tele1%>%mutate(dec=ntile(mou_pead_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat42$varname<-rep("mou_pead_Mean",nrow(dat42))
+
+#43)"da_Mean"
+summary(tele1$da_Mean)
+dat43<-tele1%>%mutate(dec=ntile(da_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat43$N<-unclass(tele1%>%mutate(dec=ntile(da_Mean,n=4))%>%count(dec)%>%unname())[[2]]
+dat43$churn_perc<-round(dat43$n/dat43$N,2)
+dat43$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(da_Mean,n=4))%>%group_by(dec)%>%summarise(min(da_Mean)))[[2]]
+dat43$Lessthan<-unclass(tele1%>%mutate(dec=ntile(da_Mean,n=4))%>%group_by(dec)%>%summarise(max(da_Mean)))[[2]]
+dat43$varname<-rep("da_Mean",nrow(dat43))
+
+#44)"da_Range"
+summary(tele1$da_Range)
+dat44<-tele1%>%mutate(dec=ntile(da_Range,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat44$N<-unclass(tele1%>%mutate(dec=ntile(da_Range,n=4))%>%count(dec)%>%unname())[[2]]
+dat44$churn_perc<-round(dat44$n/dat44$N,2)
+dat44$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(da_Range,n=4))%>%group_by(dec)%>%summarise(min(da_Range)))[[2]]
+dat44$Lessthan<-unclass(tele1%>%mutate(dec=ntile(da_Range,n=4))%>%group_by(dec)%>%summarise(max(da_Range)))[[2]]
+dat44$varname<-rep("da_Mean",nrow(dat44))
+
+#45)"datovr_Mean"#Getting less than 4 deciles so omit
+summary(tele1$datovr_Mean)
+dat45<-tele1%>%mutate(dec=ntile(datovr_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat45$varname<-rep("datovr_Mean",nrow(dat45))
+
+#46)"datovr_Range"#Getting less than 4 deciles so omit.
+summary(tele1$datovr_Range)
+dat46<-tele1%>%mutate(dec=ntile(datovr_Range,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat46$varname<-rep("datovr_Range",nrow(dat46))
+
+#47)"drop_dat_Mean"#Getting less than 4 deciles so omit.
+summary(tele1$drop_dat_Mean)
+dat47<-tele1%>%mutate(dec=ntile(drop_dat_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat47$varname<-rep("drop_dat_Mean",nrow(dat47))
+
+#48)"drop_vce_Mean"
+summary(tele1$drop_vce_Mean)
+dat48<-tele1%>%mutate(dec=ntile(drop_vce_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat48$N<-unclass(tele1%>%mutate(dec=ntile(drop_vce_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat48$churn_perc<-round(dat48$n/dat48$N,2)
+dat48$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(drop_vce_Mean,n=10))%>%group_by(dec)%>%summarise(min(da_Range)))[[2]]
+dat48$Lessthan<-unclass(tele1%>%mutate(dec=ntile(drop_vce_Mean,n=10))%>%group_by(dec)%>%summarise(max(da_Range)))[[2]]
+dat48$varname<-rep("drop_vce_Mean",nrow(dat48))
+
+#49)"adjmou"
+summary(tele1$adjmou)
+dat49<-tele1%>%mutate(dec=ntile(adjmou,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat49$N<-unclass(tele1%>%mutate(dec=ntile(adjmou,n=10))%>%count(dec)%>%unname())[[2]]
+dat49$churn_perc<-round(dat49$n/dat49$N,2)
+dat49$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(adjmou,n=10))%>%group_by(dec)%>%summarise(min(adjmou)))[[2]]
+dat49$Lessthan<-unclass(tele1%>%mutate(dec=ntile(adjmou,n=10))%>%group_by(dec)%>%summarise(max(adjmou)))[[2]]
+dat49$varname<-rep("adjmou",nrow(dat49))
+
+#50)"totrev"
+summary(tele1$totrev)
+dat50<-tele1%>%mutate(dec=ntile(totrev,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat50$N<-unclass(tele1%>%mutate(dec=ntile(totrev,n=10))%>%count(dec)%>%unname())[[2]]
+dat50$churn_perc<-round(dat50$n/dat50$N,2)
+dat50$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(totrev,n=10))%>%group_by(dec)%>%summarise(min(totrev)))[[2]]
+dat50$Lessthan<-unclass(tele1%>%mutate(dec=ntile(totrev,n=10))%>%group_by(dec)%>%summarise(max(totrev)))[[2]]
+dat50$varname<-rep("totrev",nrow(dat50))
+
+#51)"adjrev"
+summary(tele1$adjrev)
+dat51<-tele1%>%mutate(dec=ntile(adjrev,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat51$N<-unclass(tele1%>%mutate(dec=ntile(adjrev,n=10))%>%count(dec)%>%unname())[[2]]
+dat51$churn_perc<-round(dat51$n/dat51$N,2)
+dat51$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(adjrev,n=10))%>%group_by(dec)%>%summarise(min(adjrev)))[[2]]
+dat51$Lessthan<-unclass(tele1%>%mutate(dec=ntile(adjrev,n=10))%>%group_by(dec)%>%summarise(max(adjrev)))[[2]]
+dat51$varname<-rep("adjrev",nrow(dat51))
+
+#52)"avgrev"
+summary(tele1$avgrev)
+dat52<-tele1%>%mutate(dec=ntile(avgrev,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat52$N<-unclass(tele1%>%mutate(dec=ntile(avgrev,n=10))%>%count(dec)%>%unname())[[2]]
+dat52$churn_perc<-round(dat52$n/dat52$N,2)
+dat52$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(avgrev,n=10))%>%group_by(dec)%>%summarise(min(avgrev)))[[2]]
+dat52$Lessthan<-unclass(tele1%>%mutate(dec=ntile(avgrev,n=10))%>%group_by(dec)%>%summarise(max(avgrev)))[[2]]
+dat52$varname<-rep("avgrev",nrow(dat52))
+
+#53)"comp_dat_Mean"Getting less than 4 deciles so omit.
+summary(tele1$comp_dat_Mean)
+dat53<-tele1%>%mutate(dec=ntile(comp_dat_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat53$varname<-rep("comp_dat_Mean",nrow(dat53))
+
+#54)"plcd_data_Mean"#Getting less than 4 deciles so omit"
+summary(tele1$plcd_dat_Mean)
+dat54<-tele1%>%mutate(dec=ntile(plcd_dat_Mean,n=4))%>%count(churn,dec)%>%filter(churn==1)
+dat54$varname<-rep("plcd_dat_Mean",nrow(dat54))
+
+#Data Transformation and Creating Dummy Variables"
+#55)tel1$plcd_attempt_Mean<-tele1$plcd_vce_Mean
+tele1$plcd_attempt_Mean<-tele1$plcd_vce_Mean+tele1$plcd_dat_Mean
+
+summary(tele1$plcd_attempt_Mean)
+dat55<-tele1%>%mutate(dec=ntile(plcd_attempt_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat55$N<-unclass(tele1%>%mutate(dec=ntile(plcd_attempt_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat55$churn_perc<-round(dat55$n/dat55$N,2)
+dat55$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(plcd_attempt_Mean,n=10))%>%group_by(dec)%>%summarise(min(plcd_attempt_Mean)))[[2]]
+dat55$Lessthan<-unclass(tele1%>%mutate(dec=ntile(plcd_attempt_Mean,n=10))%>%group_by(dec)%>%summarise(max(plcd_attempt_Mean)))[[2]]
+dat55$varname<-rep("plcd_attempt_Mean",nrow(dat55))
+
+#56)Create Dummy Variable plcd_Attempt_Mean
+tele1$complete_Mean<-tele1$comp_dat_Mean+tele1$comp_vce_Mean
+
+summary(tele1$complete_Mean)
+dat56<-tele1%>%mutate(dec=ntile(complete_Mean,n=10))%>%count(churn,dec)%>%filter(churn==1)
+dat56$N<-unclass(tele1%>%mutate(dec=ntile(complete_Mean,n=10))%>%count(dec)%>%unname())[[2]]
+dat56$churn_perc<-round(dat56$n/dat56$N,2)
+dat56$Greaterthan<-unclass(tele1%>%mutate(dec=ntile(complete_Mean,n=10))%>%group_by(dec)%>%summarise(min(complete_Mean)))[[2]]
+dat56$Lessthan<-unclass(tele1%>%mutate(dec=ntile(complete_Mean,n=10))%>%group_by(dec)%>%summarise(max(complete_Mean)))[[2]]
+dat56$varname<-rep("complete_Mean",nrow(dat56))
+
+
+#Adding all appropriate objects to create a data object
+dat<-rbind(dat1,dat2,dat3,dat4,dat5,dat6,dat7,dat8,dat9,dat10,dat11,dat12,dat14,
+           dat15,dat18,dat19,dat20,dat21,dat22,dat23,dat24,dat25,dat26,dat27,dat28,
+           dat29,dat30,dat33,dat43,dat44,dat48,dat49,dat50,dat51,dat52,dat55,dat56)
+
+#Exporting deciled Variables
+write.csv(dat,"Deciled Continuous Variables.csv",row.names=F)
+
+#Removing variables that could be insignificant and couldn't be deciled
+names(tele1)
+tele1<-tele1[,-c(13,16,17,22,23,45,48:50,56:58,65,66)]
+names(tele1)
+
+#....Categorical Variables..#
+#25)"crclscod"so we will omit it.
+summary(tele1$crclscod)
+datc25<-tele1%>%count(churn,levels=crclscod)%>%filter(churn==1)
+datc25$N<-unclass(tele1%>%filter(crclscod%in%datc25$levels)%>%count(crclscod))[[2]]
+datc25$churn_perc<-datc25$n/datc25$N
+datc25$varname<-rep("crclscod",nrow(datc25))
+
+#26)"asl_flag"
+summary(tele1$asl_flag)
+datc26<-tele1%>%count(churn,levels=asl_flag)%>%filter(churn==1)
+datc26$N<-unclass(tele1%>%filter(asl_flag%in%datc26$levels)%>%count(asl_flag))[[2]]
+datc26$churn_perc<-datc26$n/datc26$N
+datc26varname<-rep("asl_flag",nrow(datc26))
+
+#27)"prizm_social_one"
+summary(tele1$prizm_social_one)
+datc27<-tele1%>%count(churn,levels=prizm_social_one)%>%filter(churn==1)
+datc27$N<-unclass(tele1%>%filter(prizm_social_one%in%datc27$levels)%>%count(prizm_social_one))[[2]]
+datc27$churn_perc<-datc27$n/datc27$N
+datc27varname<-rep("prizm_social_one",nrow(datc27))
+
+#28)"area"
+summary(tele1$area)
+datc28<-tele1%>%count(churn,levels=area)%>%filter(churn==1)
+datc28$N<-unclass(tele1%>%filter(area%in%datc28$levels)%>%count(area))[[2]]
+datc28$churn_perc<-datc28$n/datc28$N
+datc28varname<-rep("area",nrow(datc28))
+
+#29)"refurb_new"
+summary(tele1$refurb_new)
+datc29<-tele1%>%count(churn,levels=refurb_new)%>%filter(churn==1)
+datc29$N<-unclass(tele1%>%filter(refurb_new%in%datc29$levels)%>%count(refurb_new))[[2]]
+datc29$churn_perc<-datc29$n/datc29$N
+datc29varname<-rep("refurb_new",nrow(datc29))
+
+#30)"hnd_webcap"
+summary(tele1$hnd_webcap)
+datc30<-tele1%>%count(churn,levels=hnd_webcap)%>%filter(churn==1)
+datc30$N<-unclass(tele1%>%filter(hnd_webcap%in%datc30$levels)%>%count(hnd_webcap))[[2]]
+datc30$churn_perc<-datc30$n/datc30$N
+datc30varname<-rep("hnd_webcap",nrow(datc30))
+
+#31)"marital"
+summary(tele1$marital)
+datc31<-tele1%>%count(churn,levels=marital)%>%filter(churn==1)
+datc31$N<-unclass(tele1%>%filter(marital%in%datc31$levels)%>%count(marital))[[2]]
+datc31$churn_perc<-datc31$n/datc31$N
+datc31varname<-rep("marital",nrow(datc31))
+
+#32)"ethnic"
+summary(tele1$ethnic)
+datc32<-tele1%>%count(churn,levels=ethnic)%>%filter(churn==1)
+datc32$N<-unclass(tele1%>%filter(ethnic%in%datc32$levels)%>%count(ethnic))[[2]]
+datc32$churn_perc<-datc32$n/datc32$N
+datc32varname<-rep("ethnic",nrow(datc32))
+
+#43)"car_buy"
+summary(tele1$car_buy)
+datc43<-tele1%>%count(churn,levels=car_buy)%>%filter(churn==1)
+datc43$N<-unclass(tele1%>%filter(car_buy%in%datc43$levels)%>%count(car_buy))[[2]]
+datc43$churn_perc<-datc43$n/datc43$N
+datc43varname<-rep("car_buy",nrow(datc43))
+
+#44)"csa"#less than 5%churn so we will omit it.
+summary(tele1$csa)
+datc44<-tele1%>%count(churn,levels=csa)%>%filter(churn==1)
+datc44$N<-unclass(tele1%>%filter(csa%in%datc44$levels)%>%count(csa))[[2]]
+datc44$churn_perc<-datc44$n/datc44$N
+datc44varname<-rep("csa",nrow(datc44))
+
+#53)"retdays_1"
+summary(tele1$retdays_1)
+datc53<-tele1%>%count(churn,levels=retdays_1)%>%filter(churn==1)
+datc53$N<-unclass(tele1%>%filter(retdays_1%in%datc53$levels)%>%count(retdays_1))[[2]]
+datc53$churn_perc<-datc53$n/datc53$N
+datc53varname<-rep("retdays_1",nrow(datc53))
+summary(tele1$retdays_1)
+
+#Use some variables as factors
+
+#34)"age2"
+summary(tele1$age2)
+datc34<-tele1%>%count(churn,levels=age2)%>%filter(churn==1)
+datc34$N<-unclass(tele1%>%filter(age2%in%datc34$levels)%>%count(age2))[[2]]
+datc34$churn_perc<-datc34$n/datc34$N
+datc34varname<-rep("age2",nrow(datc34))
+
+#35)"models"
+summary(tele1$models)
+datc35<-tele1%>%count(churn,levels=models)%>%filter(churn==1)
+datc35$N<-unclass(tele1%>%filter(models%in%datc35$levels)%>%count(models))[[2]]
+datc35$churn_perc<-datc35$n/datc35$N
+datc35varname<-rep("models",nrow(datc35))
+
+#37)"actvsubs"
+summary(tele1$actvsubs)
+datc37<-tele1%>%count(churn,levels=actvsubs)%>%filter(churn==1)
+datc37$N<-unclass(tele1%>%filter(actvsubs%in%datc35$levels)%>%count(actvsubs))[[2]]
+datc37$churn_perc<-datc37$n/datc37$N
+datc37varname<-rep("actvsubs",nrow(datc37))
+
+#38)"uniqsubs"
+summary(tele1$uniqsubs)
+datc38<-tele1%>%count(churn,levels=uniqsubs)%>%filter(churn==1)
+datc38$N<-unclass(tele1%>%filter(uniqsubs%in%datc38$levels)%>%count(uniqsubs))[[2]]
+datc38$churn_perc<-datc38$n/datc38$N
+datc38varname<-rep("uniqsubs",nrow(datc38))
+
+#39)"forgntvl"
+summary(tele1$forgntvl)
+datc39<-tele1%>%count(churn,levels=forgntvl)%>%filter(churn==1)
+datc39$N<-unclass(tele1%>%filter(forgntvl%in%datc39$levels)%>%count(forgntvl))[[2]]
+datc39$churn_perc<-datc39$n/datc39$N
+datc39varname<-rep("forgntvl",nrow(datc39))
+
+#40)"mtrcycle"
+summary(tele1$mtrcycle)
+datc40<-tele1%>%count(churn,levels=mtrcycle)%>%filter(churn==1)
+datc40$N<-unclass(tele1%>%filter(mtrcycle%in%datc40$levels)%>%count(mtrcycle))[[2]]
+datc40$churn_perc<-datc40$n/datc40$N
+datc40varname<-rep("mtrcycle",nrow(datc40))
+
+#41)"truck"
+summary(tele1$truck)
+datc41<-tele1%>%count(churn,levels=truck)%>%filter(churn==1)
+datc41$N<-unclass(tele1%>%filter(truck%in%datc41$levels)%>%count(truck))[[2]]
+datc41$churn_perc<-datc41$n/datc41$N
+datc41varname<-rep("truck",nrow(datc41))
+
+#42)"hnd_price"
+summary(tele1$hnd_price)
+datc42<-tele1%>%count(churn,levels=hnd_price)%>%filter(churn==1)
+datc42$N<-unclass(tele1%>%filter(hnd_price%in%datc42$levels)%>%count(hnd_price))[[2]]
+datc42$churn_perc<-datc42$n/datc42$N
+datc42varname<-rep("hnd_price",nrow(datc42))
+
+library(plyr)
+library(dplyr)
+#Adding Categorical Variables
+datc_1<-rbind.fill(datc25,datc26,datc27,datc28,datc29,datc30,
+              datc31,datc32,datc43,datc44,datc53)
+datc_2<-rbind(datc34,datc35,datc37,datc38,datc39,datc40,datc41,datc42)
+
+#Exporting deciled files
+write.csv(datc_1,"Event Rate-Categorical Variables.csv",row.names=F)
+write.csv(datc_2,"Event Rate-Categorical Variables.csv",row.names=F)
+
+#Removing variables with less than 5%churn rate
+names(tele1)
+tele1<-tele1[,-c(25,44)]
+names(tele1)
+
+#Outlier Treatment
+str(tele1)
+list<-names(tele1)
+
+#Removing Categorical Variables
+list<-list[-c(25:42,50,51)]
+
+#Outlier Plots
+par(mfrow=c(2,5))
+for(i in 1:length(list))
+{
+  boxplot(tele1[,list[i]],main=list[i])
+}
+
+for(i in 1:length(list))
+{
+  boxplot(tele1[,list[i]],main=list[i])
+}
+#Outlier Treatments
+
+for(i in 1:length(list))
+{
+  x<-boxplot(tele1[,list[i]],main=list[i])
+  out<-x$out
+  index<-which(tele1[,list[i]]%in%x$out)
+  tele1[index,list[i]]<-mean(tele1[,list[i]],na.rm=T)
+  rm(x)
+  rm(out)
+}  
+
+for(i in 1:length(list))
+{
+  boxplot(tele1[,list[i]],main=list[i])
+}
+
+for(i in 1:length(list))
+{
+  plot(tele1[,list[i]],main=list[i])
+}
+dev.off()
+
+names(tele1)
+summary(tele1)
+
+#Remove first 5 Variables
+indexmiss<-which(is.na(tele1[,c(1:5)]))
+tele1<-tele1[-indexmiss,]
+summary(tele1)
+
+#Remove variables change_mou,marital,area
+index2<-which(is.na(tele1$change_mou))
+tele1<-tele1[-index2,]
+
+index4<-which(is.na(tele1$area))
+tele1<-tele1[-index4,]
+
+index5<-which(is.na(tele1$marital))
+tele1<-tele1[-index5,]
+          
+#Mean Imputation
+tele1$avg6mou[is.na(tele1$avg6mou)]<-mean(tele1$avg6mou,na.rm=T)
+tele1$avg6qty[is.na(tele1$avg6qty)]<-mean(tele1$avg6qty,na.rm=T)
+tele1$hnd_price[is.na(tele1$hnd_price)]<-mean(tele1$hnd_price,na.rm=T)
+
+summary(tele1)
+
+#Create Missing Category
+tele1$prizm_social_one_1<-ifelse(is.na(tele1$prizm_social_one),"Missing",as.factor(tele1$prizm_social_one))
+tele1$prizm_social_one_1<-as.factor(tele1$prizm_social_one_1)
+str(tele1$prizm_social_one_1)
+summary(tele1$prizm_social_one)
+summary(tele1$prizm_social_one_1)
+tele1$prizm_social_one_1<-factor(tele1$prizm_social_one_1,labels=c("c","R","S","T","U","Missing"))
+summary(tele1$prizm_social_one_1)
+
+names(tele1)
+tele1<-tele1[,-26]
+summary(tele1)
+
+#hnd_webcap
+tele1$hnd_webcap_1<-ifelse(is.na(tele1$hnd_webcap),"Missing",as.factor(tele1$hnd_webcap))
+tele1$hnd_webcap_1<-as.factor(tele1$hnd_webcap_1)
+str(tele1$hnd_webcap_1)
+summary(tele1$hnd_webcap)
+summary(tele1$hnd_webcap_1)
+tele1$hnd_webcap_1<-factor(tele1$hnd_webcap_1,labels=c("UNKW","WC","WCMB","Missing"))
+summary(tele1$hnd_webcap_1)
+
+names(tele1)
+tele1<-tele1[,-28]
+summary(tele1)
+
+#Checking the churn rate
+table(telecom1$churn)/nrow(telecom1)
+table(tele1$churn)/nrow(tele1)
+
+#Convert into Fcator and create dummy variables
+str(tele1$age1)
+tele1$age1_1<-ifelse(tele1$age1==0,"Default",ifelse(tele1$age1<=30,"Young",
+                      ifelse(tele1$age1>30&tele1$age1<=55,"Mid Age","Old")))
+str(tele1$age1_1)
+tele1$age1_1<-as.factor(tele1$age1_1)
+summary(tele1$age1_1)
+names(tele1)
+tele1<-tele1[,-30]
+names(tele1)
+
+#age2
+tele1$age2_1<-ifelse(tele1$age2==0,"Default",ifelse(tele1$age2<=30,"Young",
+                                                    ifelse(tele1$age2>30&tele1$age2<=55,"Mid Age","Old")))
+str(tele1$age2_1)
+tele1$age2_1<-as.factor(tele1$age2_1)
+summary(tele1$age2_1)
+names(tele1)
+tele1<-tele1[,-30]
+names(tele1)
+
+#Models
+tele1$models<-as.factor(tele1$models)
+summary(tele1$models)
+
+tele1$hnd_price<-as.factor(tele1$hnd_price)
+summary(tele1$hnd_price)
+
+tele1$actvsubs<-as.factor(tele1$actvsubs)
+summary(tele1$actvsubs)
+
+tele1$uniqsubs<-as.factor(tele1$uniqsubs)
+summary(tele1$uniqsubs)
+
+tele1$forgntvl<-as.factor(tele1$forgntvl)
+summary(tele1$forgntvl)
+
+tele1$mtrcycle<-as.factor(tele1$actvsubs)
+summary(tele1$mtrcycle)
+
+tele1$truck<-as.factor(tele1$truck)
+summary(tele1$truck)
+
+#Splitting into train and test datasets
+set.seed(200)
+index<-sample(nrow(tele1),0.70*nrow(tele1),replace=F)
+train<-tele1[index,]
+test<-tele1[-index,]
+
+table(train$churn)/nrow(train)
+table(test$churn)/nrow(test)
+
+mod<-glm(churn~.,data=train,family="binomial")
+summary(mod)
+str(train$refurb_new)
+
+#Create dummy variables for significant
+train$area_cal_nrth<-ifelse(train$area=="CALIFORNIA NORTH AREA",1,0)
+test$area_cal_nrth<-ifelse(test$area=="CALIFORNIA NORTH AREA",1,0)
+
+train$area_sou_tex<-ifelse(train$area=="CENTRAL/SOUTH TEXAS AREA",1,0)
+test$area_sou_tex<-ifelse(test$area=="CENTRAL/SOUTH TEXAS AREA",1,0)
+
+train$nort_moun_area<-ifelse(train$area=="NORTHWEST/ROCKY MOUNTAIN AREA",1,0)
+test$nort_moun_area<-ifelse(test$area=="NORTHWEST/ROCKY MOUNTAIN AREA",1,0)
+
+train$sou_flor_area<-ifelse(train$area=="SOUTH FLORIDA AREA",1,0)
+test$sou_flor_area<-ifelse(test$area=="SOUTH FLORIDA AREA",1,0)
+
+train$sou_flor_area<-ifelse(train$area=="SOUTH FLORIDA AREA",1,0)
+test$sou_flor_area<-ifelse(test$area=="SOUTH FLORIDA AREA",1,0)
+
+train$ethnic_C<-ifelse(train$ethnic=="C",1,0)
+test$ethnic_C<-ifelse(test$ethnic=="C",1,0)
+
+train$ethnic_Z<-ifelse(train$ethnic=="Z",1,0)
+test$ethnic_Z<-ifelse(test$ethnic=="Z",1,0)
+
+train$ethnic_N<-ifelse(train$ethnic=="N",1,0)
+test$ethnic_N<-ifelse(test$ethnic=="N",1,0)
+
+train$ethnic_O<-ifelse(train$ethnic=="O",1,0)
+test$ethnic_O<-ifelse(test$ethnic=="O",1,0)
+
+train$refurb_new_R<-ifelse(train$refurb_new=="R",1,0)
+test$refurb_new_R<-ifelse(test$refurb_new=="R",1,0)
+
+
+train$hnd_price105.08<-ifelse(train$hnd_price=="105.083038078331",1,0)
+test$hnd_price105.08<-ifelse(test$hnd_price=="105.083038078331",1,0)
+
+train$hnd_price129.98<-ifelse(train$hnd_price=="129.9899902",1,0)
+test$hnd_price129.98<-ifelse(test$hnd_price=="129.9899902",1,0)
+
+train$hnd_price199.98<-ifelse(train$hnd_price=="199.9899902",1,0)
+test$hnd_price199.98<-ifelse(test$hnd_price=="199.9899902",1,0)
+
+train$hnd_price249.98<-ifelse(train$hnd_price=="249.9899902",1,0)
+test$hnd_price249.98<-ifelse(test$hnd_price=="249.9899902",1,0)
+
+train$uniqsubs_2<-ifelse(train$uniqsubs=="2",1,0)
+test$uniqsubs_2<-ifelse(test$uniqsubs=="2",1,0)
+
+train$uniqsubs_3<-ifelse(train$uniqsubs=="3",1,0)
+test$uniqsubs_3<-ifelse(test$uniqsubs=="3",1,0)
+
+train$uniqsubs_4<-ifelse(train$uniqsubs=="4",1,0)
+test$uniqsubs_4<-ifelse(test$uniqsubs=="4",1,0)
+
+train$uniqsubs_5<-ifelse(train$uniqsubs=="5",1,0)
+test$uniqsubs_5<-ifelse(test$uniqsubs=="5",1,0)
+
+train$uniqsubs_7<-ifelse(train$uniqsubs=="7",1,0)
+test$uniqsubs_7<-ifelse(test$uniqsubs=="7",1,0)
+
+train$prizm_social_T<-ifelse(train$prizm_social_one_1=="T",1,0)
+test$prizm_social_T<-ifelse(test$prizm_social_one_1=="T",1,0)
+
+train$age1_Mid<-ifelse(train$age1_1=="Mid Age",1,0)
+test$age1_Mid<-ifelse(test$=="Mid Age",1,0)
+
+train$age1_Old<-ifelse(train$age1_1=="Old",1,0)
+test$age1_Old<-ifelse(test$age1_1=="Old",1,0)
+
+train$age2_Old<-ifelse(train$age2_1=="Old",1,0)
+test$age2_Old<-ifelse(test$age2_1=="Old",1,0)
+
+train$asl_flag_Y<-ifelse(train$asl_flag=="Y",1,0)
+test$asl_flag_Y<-ifelse(test$asl_flag=="Y",1,0)
+
+mod2<-glm(churn~mou_Mean+totmrc_Mean+rev_Range+mou_Range+change_mou+drop_blk_Mean+
+            drop_vce_Range+mou_opkv_Range+months+eqpdays+iwylis_vce_Mean+ovrrev_Mean+
+          avgmou+avg3qty+avg6mou+asl_flag_Y+area_cal_nrth+area_sou_tex+nort_moun_area+sou_flor_area+
+          refurb_new_R+ethnic_C+ethnic_O+ethnic_N+ethnic_Z+hnd_price105.08+hnd_price129.98+
+          hnd_price199.98+hnd_price249.98+uniqsubs_2+uniqsubs_3+uniqsubs_4+uniqsubs_5+uniqsubs_7+
+          prizm_social_T+age1_Mid+age1_Old+age2_Old+retdays_1+totrev,data=train,family="binomial")
+        
+
+summary(mod2)
+library(car)
+vif(mod2)
+
+mod3<-glm(churn~totmrc_Mean+rev_Range+mou_Range+change_mou+drop_blk_Mean+drop_vce_Range+months+eqpdays+
+            iwylis_vce_Mean+ovrrev_Mean+avgmou+avg3qty+avg6mou+asl_flag_Y+area_cal_nrth+area_sou_tex+
+            nort_moun_area+sou_flor_area+refurb_new_R+ethnic_C+ethnic_O+ethnic_Z+ethnic_N+
+            hnd_price105.08+hnd_price129.98+hnd_price249.98+totrev+
+            hnd_price249.98+uniqsubs_2+uniqsubs_3+uniqsubs_4+uniqsubs_5+uniqsubs_7+
+            retdays_1+prizm_social_T+age1_Old+age1_Mid+age2_Old,data=train,family="binomial")
+summary(mod3)
+vif(mod3)
+
+mod4<-glm(churn~totmrc_Mean+rev_Range+mou_Range+change_mou+drop_vce_Range+months+eqpdays+
+            iwylis_vce_Mean+ovrrev_Mean+avgmou+avg3qty+avg6mou+asl_flag_Y+area_cal_nrth+
+            nort_moun_area+sou_flor_area+refurb_new_R+ethnic_C+ethnic_O+ethnic_Z+ethnic_N+
+            hnd_price129.98+hnd_price249.98+totrev+hnd_price249.98+uniqsubs_2+uniqsubs_3+uniqsubs_4+uniqsubs_7+
+            retdays_1+prizm_social_T+age1_Old+age1_Mid+age2_Old,data=train,family="binomial")
+summary(mod4)
+vif(mod4)
+
+#Checking Confidence Interval
+confint(mod4)
+
+#Predicting the probability of customer Churning
+pred<-predict(mod4,type="response",newdata=test)
+head(pred)
+
+#Choosing Cutoff value and according to Kappa Value
+table(tele1$churn)/nrow(tele1)
+library(caret)
+
+#Sequence cut off value according to kappa value
+n<-seq(0.2,0.05,0.01)
+m<-1
+a<-as.vector(length(n))
+for(i in n){
+  print(i)
+  test$target<-ifelse(test$pred>i,1,0)
+  a[m]<-confusionMatrix(test$target,test$churn,positive="1")$overall[2]
+  print(m)
+  m=m+1
+}  
+max(a)
+
+pred1<-ifelse(pred>=0.2380871,1,0)
+table(pred1)
+
+#Checking Prediction Quality
+library(irr)
+kappa2<-data.frame(test$churn,pred)
+
+#Confusion Matrix
+library(caret)
+confusionMatrix(pred,test$churn,positive="1")
+table(test$churn)
+
+#Create ROCR Curve
+library(ROCR)
+pred1<-prediction(pred,test$churn)
+perf<-performance(pred1,"tpr","fpr")
+plot(perf,col="blue")
+abline(0,1,lty=8,col="red")
+auc<-performance(pred1,"auc")
+auc
+auc<-unlist(slot(auc,"y.values"))
+auc
+
+#The auc is 0.6127758
+
+#Gains Chart
+library(gains)
+gains(test$churn,predict(mod4,type="response",newdata=test),groups=10)
+
+#The Gains chart show that top 30% of the probabilities show that 41.2% customers likely to churn
+test$prob<-predict(mod4,type="response",newdata=test)
+quantile(test$prob,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1))
+
+#top 40% of the probability scores lie between 0.2041122 and 0.2233726 
+#We can use this probability to extract the no. of customers to churn
+
+head(sort(abs(mod4$coefficients),decreasing=T),10)
+summary(mod4)
+
+#1)The top 5 factors which affects the model is as follows.
+
+  #1) uniqsubs_7 with beta coefficient of 0.78109542 
+  #2) retdays_1 with beta coefficient of 0.67400732
+  #3) ethnic_O with beta coefficient of 0.32422863
+  #4) sou_flor_area with beta coefficient of 0.28732915 
+  #5) nort_mou_area with beta coefficient of 0.26065173
+
+#1)The first factor explains, with a unit increase in level 7 of variable uniqsubs,there is 
+#there is 0.78109542 unit increase in churn
+#2)The second factor exlplains with unit increase  in level of retdays_1,there is 
+#0.67400732 unit increase in churn
+#3)The third factor explains with a unit increase in level of ethnic_O,there is increase 
+#of 0.32422863 unit increase in churn
+#4)the fourth factor explains with a unit increase in level of sou_flor_area i.e South Florida Area ,
+#there is increase of 0.28732975 in churn
+#5)The fifth factor explains with a unit increase in level of nort_mou_area i.e North Mountain Area 
+#there is increase of 026065173 in churn
+
+#The family bundles should be given to 7 unique subscribers.We should also give attention
+#to the retention calls and solve the grievances at the earliest.We should give special scheme
+#to asian origin people.Some special Plans should be rolled out to the persons of South Florida Area
+#and North Mountain Area
+
+#   2.  Validation of survey findings. 
+# a) Whether "cost and billing" and "network and service quality" are important factors influencing churn behaviour.  
+
+# The following variables explain "cost and billing" and "network and service quality"
+
+# Variables totmrc_Mean i.e. 'base plan charge' representing cost to customer, 
+# var rev_Range i.e. 'Range of Revenue(charge amount)' representing billing amount,
+# var ovrrev_Mean = DATOVR_MEAN + VCEOVR_MEAN i.e. 'Mean overage revenue' (It is the sum of data and voice 
+# overage revenues) representing the overage revenue earned from customers after billing the same to them.   
+# and var  totrev i.e. 'Total revenue' representing total revenue earned from customers.
+
+
+# var totmrc_Mean has beta coefficient value of -0.005294251 meaning a unit increase in this variable is causing 
+# decrease in churn by 0.005294251/unit.
+
+# var rev_Range has beta coefficient value of 0.002095208 meaning a unit increase in this variable is causing 
+# increase in churn by 0.002095208/unit
+
+# var ovrrev_Mean has beta coefficient value of 0.007265908 meaning a unit increase in this variable is causing 
+# increase in churn by 0.007265908/unit
+
+# var totrev has beta coefficient value of 0.000197018 meaning a unit increase in this variable is causing 
+# increase in churn by 0.000197018/unit
+
+# Having said that, if we notice above mentioned beta values, a unit increase in them is having almost 0% impact 
+# on churn. SO it seems cost and billing is not very important factors here influencing churn behaviour at Mobicom.
+
+
+
+# The following variables explain "network and service quality" 
+
+# VARIABLE          BETA COEFFICIENT
+
+# mou_Range         0.000300765
+# change_mou       -0.000653979
+# drop_blk_Mean     0.007668757
+# drop_vce_Range    0.018691566 
+# mou_opkv_Range   -0.001117168 
+# iwylis_vce_Mean  -0.015130015
+# avgqty            0.001032554 
+# avg6mou          -0.000327649
+# adjmou            0.000014846
+# retdays_1         0.670774312
+# complete_Mean    -0.001719650
+
+
+# From the above statistics, data explains the following:
+
+# Variables mou_Range 1.e. with a unit increase in 'Range of number of minutes of use', 
+#       there is increase in Churn by 0.000300765 units.
+# var change_mou i.e. with a unit increase in 'Percentage change in monthly minutes of 
+#     use vs previous three month average, there is decrease in Churn by -0.000653979 units.
+# var drop_blk_Mean i.e. with unit increase in 'Mean number of dropped or blocked calls', 
+#     there is an increase in churn by 0.007668757 units
+# var drop_vce_Range i.e. with a unit increase in 'Range of number of dropped (failed) voice calls', 
+#     there is an increase in Churn by 0.018691566 units.
+# var mou_opkv_Range  i.e. with a unit increase in  'Range of unrounded minutes of use of 
+#     off-peak voice calls, there is a decrease in Churn by -0.001117168 units.
+# var iwylis_vce_Mean i.e. with a unit increase in 'Mean number of inbound wireless to wireless voice calls',
+#     there is a decrease in churn by -0.015130015 units.
+# var avgqty i.e. with a unit increase in 'Average monthly number of calls over the life of the customer',
+#     there is an increase in Churn by 0.001032554 units.
+# var avg6mou i.e. with unit increase in 'Average monthly minutes of use over the previous six months',
+#     there is a decrease in Churn by -0.000327649 units.
+# var adjmou i.e. with unit increase in  'Billing adjusted total minutes of use over the life of the customer',
+#     there is an increase in Churn by 0.000014846 units.
+# var retdays_1 representing values captured in the variable retdays i.e. with a unit increase in 
+#     'Number of days since last retention call', there is an increase in Churn by 0.000014846 units.
+#     This variable is probably explaining the service quality of the company.
+# var complete_Mean i.e. with unit increase in 'Mean number of completed voice and data calls' 
+#     there is a decrease in Churn by -0.001719650 units
+
+# Of the above variables, the beta coefficient of variable retdays_1 is expressing a very important 
+# factor influencing Churn behaviour. That is  with the increase in the number of days since a customer 
+# makes a retention call, the customer's chances of churning is very high. This could probably be because
+# their grieviances are not being catered to properly. These customers should be paid more attention to and 
+# special offers should be made to them depending upon their grieviances.
+
+
+ 
+
+#  2b) Are data usage connectivity issues turning out to be costly? In other words, is it leading to churn? 
+
+#   comp_dat_Mean - Mean no. of completed data calls. 
+#   plcd_dat_Mean - Mean number of attempted data calls placed
+#   opk_dat_Mean - Mean number of off-peak data calls
+#   blck_dat_Mean - Mean no. of blocked / failed data calls
+#   datovr_Mean - Mean revenue of data overage. 
+#   datovr_Range - Range of revenue of data overage
+#   drop_dat_Mean - Mean no. of dropped / failed data calls
+
+#   The above variables express data usage connectivity. 
+quantile(tele$plcd_dat_Mean,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.82,0.84,0.85,0.90,1))
+
+#   The Data Quality Report for all the above variables show that only 10% to 15% customers are actualy 
+#   making data calls or using the internet. 
+#   This could be a matter of concern since the global market survey report shows "Subscribers who 
+#   have switched operators in recent months reported two key information sources in their decision:
+#   the Internet and recommendation of family and friends.. 
+#   In this case it seems customers are not really using the internet. So it would be good to work 
+#   towards attaining more customers to use data and also towards proving quality network connectivity
+#   and service to provide maximum customer satisfaction and reduce Churn.
+#   Since there is not enough usable data for the above variables they are not showing any influence 
+#   on the Churn Behaviour at Mobicom.
+
+
+
+
+#   3. Would you recommend rate plan migration as a proactive retention strategy?
+
+#   Variable ovrrev_Mean has beta coefficient of 0.007265908. 
+#   var ovrrev_Mean = DATOVR_MEAN + VCEOVR_MEAN i.e. 'Mean overage revenue' 
+#   It is the sum of data and voice overage revenues representing the overage revenue earned 
+#   from customers after billing the same to them. 
+#   The Beta coefficient is not showing a strong impact of overage billing as an influencer 
+#   of churn behaviour. 
+#   Though this might be a matter of concern for few individual customers and they could be 
+#   catered to on case to case basis. But overall rate plan migration as a proactive retention strategy
+#   might not help much at Mobicom.
+
+
+#   4. What would be your recommendation on how to use this churn model for prioritisation
+#   of customers for a proactive retention campaigns in the future?
+
+# Solution:
+#Gains Chart
+library(gains)
+gains(test$churn,predict(mod6,type="response",newdata=test),groups = 10)
+#the Gains Chart shows that the top 20% of the probabilities contain 29.5% customers that are highly likely to churn.
+
+
+# Selecting Customers with high churn rate
+test$prob<-predict(mod6,type="response",newdata=test)
+quantile(test$prob,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1))
+
+# Top 20% of the probabilities lie between 0.3042058 and 0.7529329
+
+# Applying cutoff value to predict customers who Will Churn
+pred4<-predict(mod6, type="response", newdata=test)
+pred4<-ifelse(pred4>=0.3042058 , 1, 0)
+table(pred4,test$churn)
+
+Targeted<-test[test$prob>0.3042058 & test$prob<=0.7529329 & test$churn=="1","Customer_ID"]
+Targeted<-as.data.frame(Targeted)
+nrow(Targeted)
+
+write.csv(Targeted,"Target_Customers.csv",row.names = F)
+
+#   Thus Using the model can be used to predict customers with high probability of Churn and extract the 
+#   target list using their "Customer ID". 
+
+
+
+# 5. What would be the target segments for proactive retention campaigns? 
+# Falling ARPU forecast is also a concern and therefore, Mobicom would like to save their high revenue 
+# customers besides managing churn. Given a budget constraint of a contact list of 20% of the subscriber pool, 
+# which subscribers should prioritized if "revenue saves" is also a priority besides controlling churn. 
+# In other words, controlling churn is the primary objective and revenue saves is the secondary objective.
+
+# Solution:
+pred5<-predict(mod6, type="response", newdata=test)
+test$prob<-predict(mod6,type="response",newdata=test)
+quantile(test$prob,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1))
+pred6<-ifelse(pred5<0.20,"Low_Score",ifelse(pred5>=0.20 & pred5<0.30,"Medium_Score","High_Score"))
+table(pred6,test$churn)
+
+str(test$totrev)
+quantile(test$totrev,prob=c(0.10,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1))
+Revenue_Levels<-ifelse(test$totrev<670.660,"Low_Revenue",ifelse(test$totrev>=670.660 & 
+                                                                  test$totrev<1034.281,"Medium_Revenue","High_Revenue"))
+
+table(Revenue_Levels)
+
+table(pred6,Revenue_Levels)
+
+##  Thus this table can be used to select the levels of customers are to be targeted
+##  and the Target list can be extracted as follows:
+
+test$prob_levels<-ifelse(pred5<0.20,"Low_Score",ifelse(pred5>=0.20 & pred5<0.30,"Medium_Score","High_Score"))
+test$Revenue_Levels<-ifelse(test$totrev<670.660,"Low_Revenue",ifelse(test$totrev>=670.660 & 
+                                                                  test$totrev<1034.281,"Medium_Revenue","High_Revenue"))
+
+Targeted1<-test[test$prob_levels=="High_Score" & test$Revenue_Levels=="High_Revenue","Customer_ID"]
+Targeted1<-as.data.frame(Targeted1)
+nrow(Targeted1)
+
+write.csv(Targeted1,"High_Revenue_Target_Customers.csv",row.names = F)
+
+
